@@ -26,6 +26,45 @@ import pandas as pd
 import numpy as np
 
 
+"""
+Criando função auxiliar chamada de update_tables(), ela verifica se os dataframes salvos estão atualizados de acordo com o site UFCstats. Caso os dataframes não estiverem atualizados, o webscraping acontece, caso estajam atualizados não.
+"""
+
+def update_tables():
+    # Acessando ultimo evento registrado na base de dados
+    df_events = pd.read_csv("dataframes/df_events.csv")
+
+    # Obtendo nome do ultimo evento
+    event_database = df_events["event"][1]
+
+    # Link de acesso da pagina de eventos
+    URL = "http://www.ufcstats.com/statistics/events/completed?page=all"
+
+    # Realizando request para site
+    response = requests.get(URL)
+    response.raise_for_status()
+
+    # Obtendo pagina completa em html
+    soup = BeautifulSoup(response.content, "html.parser")
+
+    # Encontrando tabela
+    table = soup.find("table", class_="b-statistics__table-events")
+
+    # Encontrando linhas
+    rows = table.find_next("a", class_="b-link b-link_style_black")
+
+    # Obtendo o nome do evento
+    event_newest = rows.text
+    
+    # Tratando o nome do evento antes da comparação
+    event_newest = event_newest.strip()
+
+    if event_database == event_newest:
+        return True
+    else:
+        return False
+    
+
 
 """
 Criando a função get_events() que retorna um data frame tratado com todos os eventos registrados no site UFCstats. A documentação desta função, bem como todas as atualizações realizadas, estão no arquivo note_get_events.ipynb.
@@ -35,6 +74,16 @@ def get_events(bruto=False):
     """
     Função que retorna o data frame com todos os eventos realizados pelo UFC e armazenados no site UFCstats.
     """
+
+    # Executando verificação antes do webscraping
+    if update_tables():
+        df_events = pd.read_csv("dataframes/df_events.csv")
+        df_events = df_events.drop(columns=["Unnamed: 0"])
+        print("WARNING:Webscraping não realizado")
+        return df_events    
+
+
+
     # Link de acesso para pagina
     URL = "http://www.ufcstats.com/statistics/events/completed?page=all"
 
@@ -115,6 +164,11 @@ def get_events(bruto=False):
     """
     df_final = df_final[["event_id", "event", "date","city", "state", "country"]]
 
+    # Salvando dataframe atualizado na pasta dataframes
+    df_final.to_csv("dataframes/df_events.csv")
+
+    # Aviso sobre webscraping
+    print("WARNING:Webscraping Realizado")
     return df_final
 
 
@@ -171,6 +225,13 @@ def get_fighters(bruto=False):
     """
     Função que retorna todos os lutadores com dados presentes no site UFCstats.
     """
+    # Executando verificação antes do webscraping
+    if update_tables():
+        df_fighters = pd.read_csv("dataframes/df_fighters.csv")
+        df_fighters = df_fighters.drop(columns=["Unnamed: 0"])
+        print("WARNING:Webscraping não realizado")
+        return df_fighters    
+
     # Lista com todas as letras do alfabeto para iteração
     alfabeto = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z']
 
@@ -280,6 +341,12 @@ def get_fighters(bruto=False):
     # Renomeando as colunas para manter padrão de letras minusculas 
     df_final.rename(columns={"First": "first", "Last":"last", "Nickname": "nickname", "Stance": "stance", "Belt": "belt"})
 
+    # Salvando dataframe atualizado na pasta dataframes
+    df_final.to_csv("dataframes/df_fighters.csv")
+
+    # Aviso sobre webscraping
+    print("WARNING:Webscraping Realizado - Execute a função get_event() para atualizar os dataframes")
+
     return df_final
 
 
@@ -380,6 +447,13 @@ def get_fights(bruto=False,id=True):
     """
         Função que retorna o dataframe com todas as lutas realizadas e seus respectivos eventos
     """
+    # Executando verificação antes do webscraping
+    if update_tables():
+        df_fights = pd.read_csv("dataframes/df_fights.csv")
+        df_fights = df_fights.drop(columns=["Unnamed: 0"])
+        print("WARNING:Webscraping não realizado")
+        return df_fights    
+
 
     # Executando função e obtendo dicionario com eventos e links
     dicionario_event_link = get_links_fights()
@@ -477,6 +551,12 @@ def get_fights(bruto=False,id=True):
         # Reorganizando ordem das colunas
         cols = ["event_id"] + [col for col in df_final.columns.to_list() if col != "event_id"]
         df_final = df_final[cols]
+
+        # Salvando dataframe atualizado na pasta dataframes
+        df_final.to_csv("dataframes/df_fights.csv")
+
+        # Aviso sobre webscraping
+        print("WARNING:Webscraping Realizado - Execute a função get_event() para atualizar os dataframes")
 
         return df_final
     else:
