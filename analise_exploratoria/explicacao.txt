@@ -1,0 +1,1 @@
+Está parte do código contem toda a analise exploratoria antes da modelagem.
