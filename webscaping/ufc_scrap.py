@@ -441,6 +441,49 @@ def fight_scrap_table(event,link,bruto=False):
     return df_bruto
 
 
+# Função que retorna as primary keys de cada luta realizada
+
+def fights_key(df):
+    # Cópia do dataframe 
+    df_process = df[["event_id"]].copy()
+
+    # Numero de lutas de cada evento
+    df_aux = df_process.groupby("event_id").size()
+    
+    # Reordenando dataframe
+    df_aux = df_aux.iloc[::-1].reset_index(drop=True)
+    aux_list = df_aux.to_list()
+    
+    # Número de chave
+    key_list = [[x for x in range(1, cont + 1)] for cont in aux_list]
+    
+    # Iterando para primary_keys final
+    primay_keys_number = []
+    for i in range(0, len(key_list)):
+        for num in key_list[i]:
+            primay_keys_number.append(num)
+
+    # Numeros das lutas tratado 
+    primay_keys_number = [str(num) if len(str(num)) == 2 else "0" + str(num) for num in primay_keys_number]
+
+    # Adicionando coluna no dataframe de processamento
+    df_process["key_fight_number"] = primay_keys_number
+
+    # Separando numero do evento
+    df_process["key_event_number"] = df_process["event_id"].str[3:]
+
+    # Criando coluna final das keys
+    df_process["fights_primary_key"] = "F" + df_process["key_event_number"] + df_process["key_fight_number"]
+
+    # Adicionando ao dataframe final
+    df_final = df.copy()
+    df_final["fight_id"] = df_process["fights_primary_key"]
+
+    return df_final
+
+
+
+
 # Função final que itera os eventos e retorna um dataframe tratado.
 
 def get_fights(bruto=False,id=True):
@@ -532,7 +575,11 @@ def get_fights(bruto=False,id=True):
                                   "kd_fighter1", "kd_fighter2", "str_fighter1", "str_fighter2",
                                   "td_fighter1", "td_fighter2", "sub_fighter1", "sub_fighter2",
                                   "method", "round", "time"]]
-    
+    """
+        Está parte do script realiza a função que cria as primary_keys de cada luta
+    """
+
+    df_final = fights_key(df_final)
 
     """
         Parte do scrip que retorna as primary keys de cada evento ao invés do nome.
