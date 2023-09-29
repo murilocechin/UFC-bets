@@ -1,0 +1,152 @@
+---
+title: "modelagem_apresentacao"
+author: "Murilo Cechin"
+date: "2023-09-29"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+```{r bibliotecas}
+# Importando bibliotecas utiizadas na modelagem
+library(tidyverse)
+library(rsample)
+library(ranger)
+library(caret)
+```
+
+## Leitura do arquivo
+
+Realizanodo a leitura do arquivo df_abordagem_1, gerada no pré-processamento.
+
+```{r}
+df_abordagem1 <- read_csv("../pre_processamento/df_abordagem1_final.csv")
+
+df_abordagem1
+```
+
+Existem algumas informações que não serão utilizadas na modelagem, como a coluna "event_id", "fight_id" e a "w/l".
+
+```{r}
+# Retirando colunas que não serão utilizas
+
+df_modelagem <- df_abordagem1 %>% select(-c(event_id, fight_id, `w/l`, fighter1, fighter2, fighters1_id, fighters2_id))
+
+
+df_modelagem
+```
+Para a primeira modelagem, será desconsiderado a classe 3 da variavel resposta.
+
+```{r}
+df_modelagem <- df_modelagem[df_modelagem$resposta != 3, ]
+```
+
+
+
+
+## Criando conjunto de teste e treinamento
+
+Separando os conjuntos de teste e treinemanto com a biblioteca rsample
+
+```{r}
+# Configurando semente aleatoria
+set.seed(39)
+split <- initial_split(df_modelagem, prop = 0.8)
+
+
+train_data <- training(split)
+test_data <- testing(split)
+```
+
+Ajustando a codificação da variavel resposta
+
+```{r}
+train_data$resposta <- train_data$resposta - 1
+test_data$resposta <- test_data$resposta - 1
+```
+
+
+Visualizando proporção da variavel resposta
+
+```{r}
+# Frequencias para o conjunto de treinamento
+train_data %>%
+  group_by(resposta) %>%
+  summarise(freq_absoluta = n()) %>%
+  mutate(freq_relativa = (freq_absoluta / sum(freq_absoluta))*100)
+```
+
+
+```{r}
+# Frequencias para cojunto de teste
+test_data %>%
+  group_by(resposta) %>%
+  summarise(freq_absoluta = n()) %>%
+  mutate(freq_relativa = (freq_absoluta / sum(freq_absoluta))*100)
+```
+## Regressão Logistica
+
+Realizando a regressão logistica
+
+```{r}
+reg_logistica <- glm(resposta ~., data=train_data, family = "binomial")
+
+reg_logistica
+```
+Cálculando as probabilidades
+
+```{r}
+predicted_probs <- predict(reg_logistica, newdata=train_data, type="response")
+predicted_classes <- ifelse(predicted_probs > 0.5, 1, 0)
+
+```
+
+
+
+```{r}
+matriz_confusao <- table(Real = train_data$resposta, Previsto = predicted_classes)
+matriz_confusao
+```
+```{r}
+cm <- confusionMatrix(as.factor(predicted_classes), as.factor(train_data$resposta))
+print(cm)
+```
+
+## Random Forest
+
+Primeiramente, será rodado o código sem nenhum tipo de otimização, ou seja, utilizando as configurações padrões da biblioteca ranger.
+```{r}
+random_forest <- ranger(resposta ~., data=train_data, probability = TRUE)
+
+print(random_forest)
+```
+Observando a matriz de confusão
+
+```{r}
+# Prevendo as classes usando o modelo treinado
+predictions <- predict(random_forest, data=test_data)
+
+# As previsões estão no slot $predictions do objeto retornado
+predicted_classes <- predictions$predictions
+
+confusionMatrix(predicted_classes, test_data$resposta)
+
+```
+
+```{r}
+predicted_classes 
+```
+
+
+
+
+
+
+
+
+
+
